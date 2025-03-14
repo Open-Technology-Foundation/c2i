@@ -8,17 +8,16 @@ xcleanup() { local -i exitcode=${1:-0}; exit "$exitcode"; }
 trap 'xcleanup $?' SIGINT EXIT
 declare -i VERBOSE=1
 declare -i COPY_PATH=0
-declare -- RED='' GREEN='' NOCOLOR=''
-[[ -t 2 ]] && { RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; NOCOLOR=$'\033[0m'; }
+declare -- RED='' NOCOLOR=''
+[[ -t 2 ]] && { RED=$'\033[0;31m'; NOCOLOR=$'\033[0m'; }
 error() { local msg; for msg in "$@"; do >&2 printf '%s: %serror%s: %s\n' "$PRG" "$RED" "$NOCOLOR" "$msg"; done; }
-success() { local msg; for msg in "$@"; do >&2 printf '%s: %ssuccess%s: %s\n' "$PRG" "$GREEN" "$NOCOLOR" "$msg"; done; }
 die() { local -i exitcode=1; if (($#)); then exitcode=$1; shift; fi; if (($#)); then error "$@"; fi; exit "$exitcode"; }
 
 usage() {
   cat <<EOT
 $PRG $VERSION - Save clipboard image to PNG file
 
-Save clipboard PNG image to file with timestamp using xclip
+Save clipboard image to file with timestamp using xclip
 
 Output file is in the form {output_dir}/image-{timestamp}.png
 
@@ -31,17 +30,18 @@ output_dir        Specifies the output directory for the image.
 
 Options:
   -c, --compress [INT]
-                  Compress image using pngquant. Valid range for INT is
-                  20-100. Lower values = higher compression. Defaults to 55
-                  if INT is omitted.
+                  Compress image using pngquant. Valid range for 
+                  INT is 20-100. Lower values = higher compression. 
+                  Defaults to 50 if INT is omitted.
   -p, --copy-path Copy the file path to clipboard after saving
+                  Note: this overwrites the image in the clipboard.
   -v, --verbose   Print output filename on completion (default)
   -q, --quiet     Do not print output filename
   -V, --version   Print version and exit
   -h, --help      Display this help
 
 Examples:
-  # Create a screen shot first, then run:
+  # Copy a screen region first, then run:
 
   $PRG
   # Creates file /tmp/image-20250602-042042.png
@@ -93,7 +93,7 @@ save_clipboard_image() {
   
   # Check if clipboard contains a PNG image
   if ! xclip -selection clipboard -t TARGETS -o | grep -q 'image/png'; then
-    die 1 'No PNG image found in clipboard'
+    die 1 'No image found in clipboard'
   fi
   
   # Get image from clipboard and save directly to file
@@ -107,12 +107,11 @@ save_clipboard_image() {
     # Copy path to clipboard if requested
     if ((COPY_PATH)); then
       echo -n "$filepath" | xclip -selection clipboard
-      success "File path copied to clipboard: $filepath"
+      ((VERBOSE)) && >&2 echo 'File path copied to clipboard'
     fi
     
-    if ((VERBOSE)); then
-      echo "$filepath"
-    fi
+    ((VERBOSE)) && echo "$filepath"
+
     return 0
   fi
   
@@ -127,7 +126,11 @@ main() {
   local -i compress=0
   while (($#)); do case "$1" in
     -c|--compress)  shift
-                    compress=${1:-55}
+                    if (($#)) && [[ ${1:0:1} == '-' ]]; then
+                      compress=50
+                      continue
+                    fi
+                    compress=${1:-50}
                     (($#)) || break
                     ;;
     -p|--copy-path) COPY_PATH=1 ;;
