@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+#shellcheck disable=SC2155
+set -euo pipefail
+readonly -- VERSION='1.0.1'
+readonly -- PRG0="$(readlink -en -- "$0")"
+readonly -- PRG="${PRG0##*/}"
+xcleanup() { local -i exitcode=${1:-0}; exit "$exitcode"; }
+trap 'xcleanup $?' SIGINT EXIT
+declare -i VERBOSE=1
+declare -i COPY_PATH=0
+declare -- RED='' GREEN='' NOCOLOR=''
+[[ -t 2 ]] && { RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; NOCOLOR=$'\033[0m'; }
+error() { local msg; for msg in "$@"; do >&2 printf '%s: %serror%s: %s\n' "$PRG" "$RED" "$NOCOLOR" "$msg"; done; }
+success() { local msg; for msg in "$@"; do >&2 printf '%s: %ssuccess%s: %s\n' "$PRG" "$GREEN" "$NOCOLOR" "$msg"; done; }
+die() { local -i exitcode=1; if (($#)); then exitcode=$1; shift; fi; if (($#)); then error "$@"; fi; exit "$exitcode"; }
+
+usage() {
+  cat <<EOT
+$PRG $VERSION - Save clipboard image to PNG file
+
+Save clipboard PNG image to file with timestamp using xclip
+
+Output file is in the form {output_dir}/image-{timestamp}.png
+
+Requires: xclip (pngquant optional for compression)
+
+Usage: $PRG [OPTIONS] [output_dir]
+
+output_dir        Specifies the output directory for the image.
+                  Default /tmp
+
+Options:
+  -c, --compress [INT]
+                  Compress image using pngquant. Valid range for INT is
+                  20-100. Lower values = higher compression. Defaults to 55
+                  if INT is omitted.
+  -p, --copy-path Copy the file path to clipboard after saving
+  -v, --verbose   Print output filename on completion (default)
+  -q, --quiet     Do not print output filename
+  -V, --version   Print version and exit
+  -h, --help      Display this help
+
+Examples:
+  # Create a screen shot first, then run:
+
+  $PRG
+  # Creates file /tmp/image-20250602-042042.png
+
+  $PRG .
+  # Creates file ./image-20250602-042042.png
+
+  $PRG -c ~/Downloads
+  # Creates file ~/Downloads/image-20250602-042042.png and compresses it
+
+  # Create very compressed image file and store filename to variable
+  imgfile=$($PRG -c 30)
+  
+  # Save image and copy its path to clipboard for easy sharing
+  $PRG -p ~/Pictures
+
+EOT
+  exit 0
+}
+
+# Check for required dependencies
+check_dependencies() {
+  if ! command -v xclip &> /dev/null; then
+    error 'xclip not installed'
+    >&2 echo 'Install with: '
+    >&2 echo 'sudo apt update && sudo apt install xclip'
+    exit 1
+  fi
+  
+  # Check for pngquant if compression is enabled
+  if ((compress)) && ! command -v pngquant &> /dev/null; then
+    error 'pngquant not installed (required for compression)'
+    >&2 echo 'Install with: '
+    >&2 echo 'sudo apt update && sudo apt install pngquant'
+    exit 1
+  fi
+}
+
+# Save clipboard image to PNG
+save_clipboard_image() {
+  local output_dir="$1"
+  local -i compress=${2:-0} 
+  ((compress < 20)) && compress=20
+  local -i upperbound=$((compress+15))
+
+  local timestamp=$(date +'%Y%m%d-%H%M%S')
+  local filename="image-${timestamp}.png"
+  local filepath="${output_dir}/${filename}"
+  
+  # Check if clipboard contains a PNG image
+  if ! xclip -selection clipboard -t TARGETS -o | grep -q 'image/png'; then
+    die 1 'No PNG image found in clipboard'
+  fi
+  
+  # Get image from clipboard and save directly to file
+  xclip -selection clipboard -t image/png -o > "$filepath" 2>/dev/null
+  
+  ((compress)) && \
+      pngquant --quality=${compress}-${upperbound} --force --ext .png "$filepath"
+
+  # Check if the file was created and has content
+  if [[ -s "$filepath" ]]; then
+    # Copy path to clipboard if requested
+    if ((COPY_PATH)); then
+      echo -n "$filepath" | xclip -selection clipboard
+      success "File path copied to clipboard: $filepath"
+    fi
+    
+    if ((VERBOSE)); then
+      echo "$filepath"
+    fi
+    return 0
+  fi
+  
+  rm -f "$filepath" # Clean up empty file if it was created
+  error 'Failed to save clipboard content as image'
+  return 1
+}
+
+# Main function
+main() {
+  local -- output_dir=''
+  local -i compress=0
+  while (($#)); do case "$1" in
+    -c|--compress)  shift
+                    compress=${1:-55}
+                    (($#)) || break
+                    ;;
+    -p|--copy-path) COPY_PATH=1 ;;
+    -h|--help)      usage 0 ;;
+    -v|--verbose)   VERBOSE+=1 ;;
+    -q|--quiet)     VERBOSE=0 ;;
+    -V|--version)   echo "$PRG $VERSION"; exit 0 ;;
+    -[hvqVpc]*) #shellcheck disable=SC2046 #split up single options
+                    set -- '' $(printf -- "-%c " $(grep -o . <<<"${1:1}")) "${@:2}" ;;
+    -*)             die 22 "Invalid option '$1'" ;;
+    *)              output_dir="$1" ;;
+  esac; shift; done
+
+  check_dependencies
+  
+  [[ -z $output_dir ]] && output_dir=/tmp
+  output_dir=$(readlink -en -- "$output_dir")
+  # Check if output directory exists
+  [[ ! -d "$output_dir" ]] && die 1 "Output directory does not exist: $output_dir"
+  
+  # Save clipboard image
+  save_clipboard_image "$output_dir" "$compress"
+}
+
+main "$@"
+#fin
