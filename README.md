@@ -1,39 +1,63 @@
 # Clipboard to Image (c2i)
 
-A lightweight utility for saving clipboard PNG images to files with timestamp.
+A lightweight, robust utility for saving PNG images from clipboard to timestamped files.
+
+## Version 1.1.0
+
+### What's New in v1.1.0
+- **Improved Code Quality**: Refactored to follow enterprise Bash coding standards
+- **Fixed Clipboard Path Copy**: The `-p` flag now correctly replaces image data with file path text
+- **Comprehensive Test Suite**: Added 50+ automated tests with fixtures
+- **Better Error Handling**: Standardized error messages and exit codes
+- **Enhanced Messaging**: Color-coded output with proper stream separation (stdout/stderr)
 
 ## Features
 
-- Save PNG images from clipboard to files with automatic timestamps
-- Optional image compression using pngquant
-- Configurable output directory
-- Copy file path to clipboard for easy sharing
-- Simple command-line interface
+- Save PNG images from clipboard with automatic timestamps
+- Optional image compression using pngquant (20-100 quality range)
+- Configurable output directory (defaults to `/tmp`)
+- Copy saved file path to clipboard for easy sharing (`-p` flag)
+- Quiet mode for scripting (`-q` flag)
+- Verbose mode for detailed output (`-v` flag)
+- Simple, focused command-line interface
 
 ## Installation
 
 ### Dependencies
 
-- `xclip` - Required for clipboard access
-- `pngquant` - Optional, for image compression
+**Required:**
+- `xclip` - Clipboard access
 
-On Debian/Ubuntu systems:
+**Optional:**
+- `pngquant` - Image compression (only needed with `-c` flag)
 
+#### Install on Debian/Ubuntu:
 ```bash
 sudo apt update && sudo apt install xclip pngquant
 ```
 
 ### Setup
 
-1. Clone this repository or download the script
+1. Clone this repository or download the script:
+   ```bash
+   git clone <repository-url>
+   cd c2i
+   ```
+
 2. Make the script executable:
    ```bash
    chmod +x clipboard-to-imagefile
    ```
-3. Create symlinks or add the script to your PATH:
+
+3. Create convenient symlinks (optional):
    ```bash
-   # Create symlink in a directory that's in your PATH (e.g., ~/.local/bin)
-   ln -s /path/to/clipboard-to-imagefile ~/.local/bin/c2i
+   # Add to a directory in your PATH
+   sudo ln -s $(pwd)/clipboard-to-imagefile /usr/local/bin/c2i
+   ```
+
+4. Enable bash completion (optional):
+   ```bash
+   source .bash_completion
    ```
 
 ## Usage
@@ -44,40 +68,147 @@ c2i [OPTIONS] [output_dir]
 
 ### Options
 
-- `-c, --compress [INT]`: Compress image using pngquant. Valid range for INT is 20-100 (lower values = higher compression). Defaults to 55 if INT is omitted.
-- `-p, --copy-path`: Copy the file path to clipboard after saving
-- `-v, --verbose`: Print output filename on completion (default)
-- `-q, --quiet`: Do not print output filename
-- `-V, --version`: Print version and exit
-- `-h, --help`: Display help
+| Option | Description |
+|--------|-------------|
+| `-c, --compress [INT]` | Compress image using pngquant. INT range: 20-100 (lower = higher compression). Default: 50 |
+| `-p, --copy-path` | Copy the saved file path to clipboard (replaces image) |
+| `-v, --verbose` | Verbose output (default) |
+| `-q, --quiet` | Suppress output |
+| `-V, --version` | Show version |
+| `-h, --help` | Display help |
 
 ### Examples
 
-Create a screenshot (using your system's screenshot tool), then run:
-
 ```bash
+# Take a screenshot with your system tool, then:
+
 # Save to /tmp (default)
 c2i
+# Output: /tmp/image-20250316-143022.png
 
 # Save to current directory
 c2i .
 
-# Save to Downloads folder with compression
-c2i -c ~/Downloads
+# Save to specific folder with compression
+c2i -c ~/Pictures
+# Compresses with default quality (50)
 
-# Save with high compression level (30) and store path in a variable
-imgfile=$(c2i -c 30)
+# Save with high compression (quality 30)
+c2i -c 30 ~/Pictures
 
-# Save to Pictures folder and copy the path to clipboard for easy sharing
-c2i -p ~/Pictures
+# Save and copy path to clipboard for sharing
+c2i -p ~/Documents
+# The file path replaces the image in clipboard
+
+# Quiet mode for scripting
+imgpath=$(c2i -q ~/Pictures)
+echo "Saved to: $imgpath"
+
+# Combine options
+c2i -pc 70 ~/Pictures
+# Compress at quality 70 and copy path to clipboard
 ```
 
-## File Structure
+## Output Format
 
-- `clipboard-to-imagefile` - Main script
-- `c2i` - Symlink to the main script
-- `clipboard-to-imagefile.sh` - Symlink to the main script
+Files are saved with the pattern:
+```
+{output_dir}/image-{YYYYMMDD-HHMMSS}.png
+```
+
+Example: `image-20250316-143022.png`
+
+This timestamp format ensures:
+- Files sort chronologically
+- No naming conflicts
+- Easy identification of when the image was captured
+
+## Testing
+
+The project includes a comprehensive test suite:
+
+```bash
+# Run all tests
+make -C tests test
+
+# Create test fixture from clipboard image
+make -C tests test-fixtures
+
+# Run specific test file
+bash tests/test-basic-functionality.sh
+```
+
+Test coverage includes:
+- Basic functionality (save, quiet, verbose modes)
+- Compression with various quality levels
+- Clipboard path copying
+- Error handling and edge cases
+- Argument parsing
+- File naming and timestamps
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | General error (no image, directory issues, etc.) |
+| 22 | Invalid command-line option |
+
+## Project Structure
+
+```
+c2i/
+├── clipboard-to-imagefile    # Main script
+├── c2i                       # Symlink to main script
+├── .bash_completion          # Tab completion support
+├── README.md                 # This file
+├── CLAUDE.md                 # AI assistant guidelines
+├── BASH-CODING-STYLE.md      # Coding standards
+├── LICENSE                   # MIT License
+└── tests/                    # Test suite
+    ├── run-tests.sh          # Test runner
+    ├── test-*.sh             # Individual test files
+    ├── fixtures/             # Test images
+    └── Makefile              # Test automation
+```
+
+## Code Quality
+
+This project follows strict Bash coding standards:
+- `set -euo pipefail` for safety
+- Proper variable scoping with `local` and `declare`
+- Consistent error handling with meaningful exit codes
+- Shellcheck validated (no warnings)
+- Comprehensive input validation
+- Clear separation of stdout/stderr output
+
+## Contributing
+
+Contributions are welcome! Please ensure:
+1. Code follows the style in `BASH-CODING-STYLE.md`
+2. All tests pass: `make -C tests test`
+3. Shellcheck reports no issues: `shellcheck -x clipboard-to-imagefile`
+4. New features include corresponding tests
 
 ## License
 
-MIT
+GPL-3
+
+## Troubleshooting
+
+**No image in clipboard:**
+- Ensure you've copied a PNG image (screenshots work)
+- Some applications may not copy images in PNG format
+
+**Permission denied:**
+- Check output directory permissions
+- Ensure the script is executable: `chmod +x clipboard-to-imagefile`
+
+**xclip not found:**
+- Install with: `sudo apt install xclip`
+- Required for clipboard access
+
+**Compression not working:**
+- Install pngquant: `sudo apt install pngquant`
+- Only needed when using `-c` flag
+

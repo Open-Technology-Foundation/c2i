@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Bash completion for clipboard-to-imagefile, c2i, and clipboard-to-imagefile.sh
+
+_clipboard_to_imagefile() {
+  local cur prev opts
+  COMPREPLY=()
+  cur="${COMP_WORDS[COMP_CWORD]}"
+  prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+  # Available options
+  opts="-c --compress -p --copy-path -v --verbose -q --quiet -V --version -h --help"
+
+  case ${prev} in
+    -c|--compress)
+      # Suggest compression values (20-100)
+      COMPREPLY=( $(compgen -W "20 30 40 50 60 70 80 90 100" -- ${cur}) )
+      return 0
+      ;;
+    *)
+      ;;
+  esac
+
+  if [[ ${cur} == -* ]]; then
+    # Complete options
+    COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+    return 0
+  else
+    # Complete directories for output_dir parameter
+    COMPREPLY=( $(compgen -d -- ${cur}) )
+    return 0
+  fi
+}
+
+# Register completion for all three script names
+complete -F _clipboard_to_imagefile clipboard-to-imagefile
+complete -F _clipboard_to_imagefile c2i
+complete -F _clipboard_to_imagefile clipboard-to-imagefile.sh
+
+#fin
