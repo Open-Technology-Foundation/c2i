@@ -163,7 +163,7 @@ c2i/
 ├── .bash_completion          # Tab completion support
 ├── README.md                 # This file
 ├── CLAUDE.md                 # AI assistant guidelines
-├── BASH-CODING-STYLE.md      # Coding standards
+├── BASH-CODING-STANDARD.md      # Coding standards
 ├── LICENSE                   # MIT License
 └── tests/                    # Test suite
     ├── run-tests.sh          # Test runner
@@ -185,7 +185,7 @@ This project follows strict Bash coding standards:
 ## Contributing
 
 Contributions are welcome! Please ensure:
-1. Code follows the style in `BASH-CODING-STYLE.md`
+1. Code follows the style in `BASH-CODING-STANDARD.md`
 2. All tests pass: `make -C tests test`
 3. Shellcheck reports no issues: `shellcheck -x clipboard-to-imagefile`
 4. New features include corresponding tests
