@@ -1,21 +1,20 @@
 #!/usr/bin/env bash
 #shellcheck disable=SC2155
+# Save clipboard PNG image to timestamped file with optional compression
 set -euo pipefail
 
+# Recommended shopt settings
+shopt -s inherit_errexit shift_verbose extglob
+
 VERSION='1.1.0'
-PRG0=$(readlink -en -- "$0")
-PRG=${PRG0##*/}
-readonly -- VERSION PRG0 PRG
+SCRIPT_NAME=$(basename "$(readlink -en -- "$0")")
+readonly -- VERSION SCRIPT_NAME
 
 declare -i VERBOSE=1
 declare -i COPY_PATH=0
 
 # Color definitions (if terminal output)
-if [[ -t 2 ]]; then
-  declare -- RED=$'\033[0;31m' GREEN=$'\033[0;32m' YELLOW=$'\033[0;33m' CYAN=$'\033[0;36m' NC=$'\033[0m'
-else
-  declare -- RED='' GREEN='' YELLOW='' CYAN='' NC=''
-fi
+[[ -t 1 && -t 2 ]] && declare -- RED=$'\033[0;31m' GREEN=$'\033[0;32m' YELLOW=$'\033[0;33m' CYAN=$'\033[0;36m' NC=$'\033[0m' || declare -- RED='' GREEN='' YELLOW='' CYAN='' NC=''
 readonly -- RED GREEN YELLOW CYAN NC
 
 # --------------------------------------------------------------------------------
@@ -24,7 +23,7 @@ readonly -- RED GREEN YELLOW CYAN NC
 
 # Core message function using FUNCNAME for context
 _msg() {
-  local -- status="${FUNCNAME[1]}" prefix="$PRG" msg
+  local -- status="${FUNCNAME[1]}" prefix="$SCRIPT_NAME" msg
   case "$status" in
     success) prefix+=": ${GREEN}✓${NC}" ;;
     warn)    prefix+=": $YELLOW$status$NC" ;;
@@ -51,12 +50,7 @@ noarg() {
   true
 }
 
-# Cleanup function
-cleanup() {
-  local -i exitcode=${1:-0}
-  exit "$exitcode"
-}
-trap 'cleanup $?' SIGINT SIGTERM EXIT
+trap 'exit $?' SIGINT SIGTERM EXIT
 
 # --------------------------------------------------------------------------------
 # Business logic functions
@@ -65,7 +59,7 @@ trap 'cleanup $?' SIGINT SIGTERM EXIT
 # Usage documentation
 usage() {
   cat <<EOT
-$PRG $VERSION - Save clipboard image to PNG file
+$SCRIPT_NAME $VERSION - Save clipboard image to PNG file
 
 Save clipboard image to file with timestamp using xclip
 
@@ -73,7 +67,7 @@ Output file is in the form {output_dir}/image-{timestamp}.png
 
 Requires: xclip (pngquant optional for compression)
 
-Usage: $PRG [OPTIONS] [output_dir]
+Usage: $SCRIPT_NAME [OPTIONS] [output_dir]
 
 output_dir        Specifies the output directory for the image.
                   Default /tmp
@@ -93,20 +87,20 @@ Options:
 Examples:
   # Copy a screen region first, then run:
 
-  $PRG
+  $SCRIPT_NAME
   # Creates file /tmp/image-20250602-042042.png
 
-  $PRG .
+  $SCRIPT_NAME .
   # Creates file ./image-20250602-042042.png
 
-  $PRG -c ~/Downloads
+  $SCRIPT_NAME -c ~/Downloads
   # Creates file ~/Downloads/image-20250602-042042.png and compresses it
 
   # Create very compressed image file and store filename to variable
-  imgfile=\$($PRG -c 30)
+  imgfile=\$($SCRIPT_NAME -c 30)
 
   # Save image and copy its path to clipboard for easy sharing
-  $PRG -p ~/Pictures
+  $SCRIPT_NAME -p ~/Pictures
 
 EOT
   exit "${1:-0}"
@@ -164,7 +158,7 @@ save_clipboard_image() {
     if ((COPY_PATH)); then
       # Clear clipboard first then set text content
       # This ensures the text replaces any image data
-      echo -n "$filepath" | xclip -selection clipboard -i
+      echo -n "$filepath" | xclip -selection clipboard -i 2>/dev/null
       info 'File path copied to clipboard'
     fi
 
@@ -189,8 +183,8 @@ main() {
   # Argument parsing
   while (($#)); do case "$1" in
     -c|--compress)  shift
-                    if (($#)) && [[ ${1:0:1} != '-' ]]; then
-                      compress=${1:-50}
+                    if (($#)) && [[ ${1:0:1} != '-' ]] && [[ $1 =~ ^[0-9]+$ ]]; then
+                      compress=$1
                     else
                       compress=50
                       continue
@@ -199,7 +193,7 @@ main() {
     -p|--copy-path) COPY_PATH=1 ;;
     -v|--verbose)   VERBOSE+=1 ;;
     -q|--quiet)     VERBOSE=0 ;;
-    -V|--version)   echo "$PRG $VERSION"; exit 0 ;;
+    -V|--version)   echo "$SCRIPT_NAME $VERSION"; exit 0 ;;
     -h|--help)      usage 0 ;;
     # Handle combined short options
     -[cvqVph]*) #shellcheck disable=SC2046
