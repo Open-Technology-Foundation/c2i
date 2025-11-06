@@ -2,62 +2,40 @@
 #shellcheck disable=SC2155
 # Save clipboard PNG image to timestamped file with optional compression
 set -euo pipefail
-
-# Recommended shopt settings
 shopt -s inherit_errexit shift_verbose extglob
 
-VERSION='1.1.0'
-SCRIPT_NAME=$(basename "$(readlink -en -- "$0")")
-readonly -- VERSION SCRIPT_NAME
+declare -r VERSION='1.2.0'
+declare -r SCRIPT_NAME=$(basename -- "$(realpath -e -- "$0")")
 
-declare -i VERBOSE=1
 declare -i COPY_PATH=0
 
+# Logging system
+declare -i VERBOSE=1
 # Color definitions (if terminal output)
-[[ -t 1 && -t 2 ]] && declare -- RED=$'\033[0;31m' GREEN=$'\033[0;32m' YELLOW=$'\033[0;33m' CYAN=$'\033[0;36m' NC=$'\033[0m' || declare -- RED='' GREEN='' YELLOW='' CYAN='' NC=''
-readonly -- RED GREEN YELLOW CYAN NC
-
-# --------------------------------------------------------------------------------
-# Utility functions
-# --------------------------------------------------------------------------------
-
+#shellcheck disable=SC2015
+[[ -t 1 && -t 2 ]] && declare -r NC=$'\033[0m' RED=$'\033[0;31m' GREEN=$'\033[0;32m' CYAN=$'\033[0;36m' || declare -r NC='' RED='' GREEN='' CYAN=''
 # Core message function using FUNCNAME for context
 _msg() {
-  local -- status="${FUNCNAME[1]}" prefix="$SCRIPT_NAME" msg
+  local -- status="${FUNCNAME[1]}" prefix="$SCRIPT_NAME:" msg
   case "$status" in
-    success) prefix+=": ${GREEN}✓${NC}" ;;
-    warn)    prefix+=": $YELLOW$status$NC" ;;
-    info)    prefix+=": $CYAN$status$NC" ;;
-    error)   prefix+=": $RED$status$NC" ;;
-    vecho)   status='info' ;;
+    info)    prefix+=" ${CYAN}◉${NC}" ;;
+    success) prefix+=" ${GREEN}✓${NC}" ;;
+    error)   prefix+=" ${RED}✗${NC}" ;;
   esac
-  for msg in "$@"; do printf '%s: %s\n' "$prefix" "$msg"; done
+  for msg in "$@"; do printf '%s %s\n' "$prefix" "$msg"; done
 }
 # Conditional output based on verbosity
-vecho() { ((VERBOSE)) || return 0; _msg "$@"; }
-success() { ((VERBOSE)) || return 0; >&2 _msg "$@"; }
-warn() { ((VERBOSE)) || return 0; >&2 _msg "$@"; }
 info() { ((VERBOSE)) || return 0; >&2 _msg "$@"; }
+success() { ((VERBOSE)) || return 0; >&2 _msg "$@" || return 0; }
 # Unconditional output
 error() { >&2 _msg "$@"; }
 die() { (($# > 1)) && error "${@:2}"; exit "${1:-0}"; }
 
-# Argument validation helper
-noarg() {
-  if (($# < 2)) || [[ ${2:0:1} == '-' ]]; then
-    die 2 "Missing argument for option '$1'"
-  fi
-  true
-}
-
 trap 'exit $?' SIGINT SIGTERM EXIT
 
 # --------------------------------------------------------------------------------
-# Business logic functions
-# --------------------------------------------------------------------------------
-
 # Usage documentation
-usage() {
+show_help() {
   cat <<EOT
 $SCRIPT_NAME $VERSION - Save clipboard image to PNG file
 
@@ -87,14 +65,14 @@ Options:
 Examples:
   # Copy a screen region first, then run:
 
+  # Create file /tmp/image-20250602-042042.png
   $SCRIPT_NAME
-  # Creates file /tmp/image-20250602-042042.png
 
+  # Create file ./image-20250602-042042.png
   $SCRIPT_NAME .
-  # Creates file ./image-20250602-042042.png
 
+  # Create file ~/Downloads/image-20250602-042042.png and compress it
   $SCRIPT_NAME -c ~/Downloads
-  # Creates file ~/Downloads/image-20250602-042042.png and compresses it
 
   # Create very compressed image file and store filename to variable
   imgfile=\$($SCRIPT_NAME -c 30)
@@ -103,7 +81,6 @@ Examples:
   $SCRIPT_NAME -p ~/Pictures
 
 EOT
-  exit "${1:-0}"
 }
 
 # Check for required dependencies
@@ -113,8 +90,7 @@ check_dependencies() {
   if ! command -v xclip &> /dev/null; then
     error 'xclip not installed'
     VERBOSE=1
-    info 'Install with: '
-    info 'sudo apt update && sudo apt install xclip'
+    info 'Install with:' 'sudo apt update && sudo apt install xclip'
     die 1
   fi
 
@@ -122,35 +98,33 @@ check_dependencies() {
   if ((compress)) && ! command -v pngquant &> /dev/null; then
     error 'pngquant not installed (required for compression)'
     VERBOSE=1
-    info  'Install with: ' \
-          'sudo apt update && sudo apt install pngquant'
+    info  'Install with:' 'sudo apt update && sudo apt install pngquant'
     die 1
   fi
 }
 
 # Save clipboard image to PNG
 save_clipboard_image() {
-  local -- output_dir="$1"
+  local -- output_dir=$1
   local -i compress=${2:-0}
 
   # Adjust compression boundaries
-  ((compress < 20)) && compress=20
-  local -i upperbound=$((compress+15))
+  ((compress > 19)) || compress=20
+  local -i upperbound=compress+15
 
   local -- timestamp=$(date +'%Y%m%d-%H%M%S')
-  local -- filename="image-${timestamp}.png"
-  local -- filepath="${output_dir}/${filename}"
+  local -- filename=image-"$timestamp".png
+  local -- filepath="$output_dir"/"$filename"
 
   # Check if clipboard contains a PNG image
-  if ! xclip -selection clipboard -t TARGETS -o 2>/dev/null | grep -q 'image/png'; then
-    die 1 'No image found in clipboard'
-  fi
+  xclip -selection clipboard -t TARGETS -o 2>/dev/null | grep -q 'image/png' \
+      || die 1 'No image found in clipboard'
 
   # Get image from clipboard and save directly to file
   xclip -selection clipboard -t image/png -o > "$filepath" 2>/dev/null || die 1 'Failed to save clipboard content as image'
 
   # Apply compression if requested
-  ((compress)) && pngquant --quality=${compress}-${upperbound} --force --ext .png "$filepath"
+  ((compress==0)) || pngquant --quality=${compress}-${upperbound} --force --ext .png "$filepath"
 
   # Check if the file was created and has content
   if [[ -s "$filepath" ]]; then
@@ -163,7 +137,7 @@ save_clipboard_image() {
     fi
 
     # Always output the filepath to stdout (unless quiet mode is on)
-    ((VERBOSE)) && echo "$filepath"
+    ((VERBOSE==0)) || echo "$filepath"
     return 0
   fi
 
@@ -173,15 +147,15 @@ save_clipboard_image() {
 }
 
 # --------------------------------------------------------------------------------
-# Main function
-# --------------------------------------------------------------------------------
-
 main() {
   local -- output_dir=''
   local -i compress=0
 
   # Argument parsing
-  while (($#)); do case "$1" in
+  while (($#)); do case $1 in
+    -h|--help)      show_help; return 0 ;;
+    -V|--version)   echo "$SCRIPT_NAME $VERSION"; return 0 ;;
+
     -c|--compress)  shift
                     if (($#)) && [[ ${1:0:1} != '-' ]] && [[ $1 =~ ^[0-9]+$ ]]; then
                       compress=$1
@@ -193,22 +167,20 @@ main() {
     -p|--copy-path) COPY_PATH=1 ;;
     -v|--verbose)   VERBOSE+=1 ;;
     -q|--quiet)     VERBOSE=0 ;;
-    -V|--version)   echo "$SCRIPT_NAME $VERSION"; exit 0 ;;
-    -h|--help)      usage 0 ;;
     # Handle combined short options
-    -[cvqVph]*) #shellcheck disable=SC2046
+    -[hVcpvq]*) #shellcheck disable=SC2046
                     set -- '' $(printf -- "-%c " $(grep -o . <<<"${1:1}")) "${@:2}" ;;
-    -*)             die 22 "Invalid option '$1'" ;;
-    *)              [[ -n $output_dir ]] && die 2 "Too many arguments." "Output dir '$output_dir' already specified."
-                    output_dir="$1" ;;
+    -*)             die 22 "Invalid option ${1@Q}" ;;
+    *)              [[ -z $output_dir ]] || die 2 "Too many arguments ${1@Q}" "Output dir ${output_dir@Q} already specified."
+                    output_dir=$1 ;;
   esac; shift; done
 
   # Set default output directory
   [[ -n $output_dir ]] || output_dir=/tmp
 
   # Resolve and validate output directory
-  output_dir=$(readlink -en -- "$output_dir") || die 1 "Output directory '$output_dir' does not exist"
-  [[ -d "$output_dir" ]] || die 1 "Output directory '$output_dir' does not exist"
+  output_dir=$(realpath -e -- "$output_dir") || die 1 "Output directory ${output_dir@Q} does not exist"
+  [[ -d "$output_dir" ]] || die 1 "Output directory ${output_dir@Q} does not exist"
 
   # Check dependencies
   check_dependencies "$compress"
