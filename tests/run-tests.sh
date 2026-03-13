@@ -181,10 +181,11 @@ main() {
   # Check if test fixture exists
   if [[ ! -f "$TESTDIR/fixtures/test-image.png" ]]; then
     error "Test fixture not found: $TESTDIR/fixtures/test-image.png"
-    test_info "Please copy an image to clipboard and run: make test-fixtures"
+    test_info "Copy a screen region to clipboard, then run: make -C tests test-fixtures"
     exit 1
   fi
 
+  test_info "Ensure a screen region has been copied to the clipboard before running tests"
   test_info "Running tests from: $TESTDIR"
   test_info "Testing script: $BASEDIR/clipboard-to-imagefile"
 
