@@ -1,0 +1,146 @@
+.\" c2i.1 - manpage for clipboard-to-imagefile (c2i)
+.TH C2I 1 "2026-03-13" "c2i 1.2.0" "User Commands"
+.SH NAME
+c2i \- save clipboard PNG image to a timestamped file
+.SH SYNOPSIS
+.B c2i
+.RB [ \-c
+.RI [ quality ]]
+.RB [ \-p ]
+.RB [ \-q | \-v ]
+.RI [ output_dir ]
+.br
+.B c2i
+.RB [ \-h | \-V ]
+.SH DESCRIPTION
+.B c2i
+reads a PNG image from the X11 clipboard and writes it to a timestamped file.
+The output filename has the form:
+.PP
+.RS
+.IR output_dir /image\- YYYYMMDD \- HHMMSS .png
+.RE
+.PP
+If
+.I output_dir
+is omitted, files are saved to
+.BR /tmp .
+.PP
+Optionally, the saved image can be compressed with
+.BR pngquant (1)
+and the resulting file path can be copied back to the clipboard.
+.SH OPTIONS
+.TP
+.BR \-c ", " \-\-compress " [" \fIINT\fR ]
+Compress the image using
+.BR pngquant (1).
+.I INT
+sets the lower bound of the quality range (valid: 20\(en100; lower values
+produce smaller files).
+If
+.I INT
+is omitted, defaults to
+.BR 50 .
+Values below 20 are clamped to 20.
+.TP
+.BR \-p ", " \-\-copy\-path
+Copy the absolute file path to the clipboard after saving.
+This replaces the image data in the clipboard with text.
+.TP
+.BR \-v ", " \-\-verbose
+Print the output file path to stdout on completion.
+This is the default behaviour.
+.TP
+.BR \-q ", " \-\-quiet
+Suppress the output file path.
+Status and error messages on stderr are also suppressed.
+.TP
+.BR \-V ", " \-\-version
+Print the program name and version, then exit.
+.TP
+.BR \-h ", " \-\-help
+Display the built\-in help text and exit.
+.PP
+Short options may be bundled (e.g.\&
+.BR \-pc\ 70 ).
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+General error: no image in clipboard, missing dependency, invalid directory,
+or write failure.
+.TP
+.B 2
+Too many arguments (output directory specified more than once).
+.TP
+.B 22
+Invalid command\-line option.
+.SH EXAMPLES
+Copy a screen region to the clipboard first (e.g.\& with a screenshot tool),
+then:
+.TP
+Save to /tmp (default):
+.B c2i
+.TP
+Save to the current directory:
+.B c2i .
+.TP
+Save with default compression (quality 50):
+.B c2i \-c ~/Pictures
+.TP
+Save with high compression (quality 30):
+.B c2i \-c 30 ~/Pictures
+.TP
+Save and copy path to clipboard:
+.B c2i \-p ~/Documents
+.TP
+Capture file path in a shell variable:
+imgfile=$(
+.B c2i
+~/Pictures )
+.TP
+Compress and copy path in one command:
+.B c2i \-pc 70 ~/Pictures
+.SH ENVIRONMENT
+.B c2i
+uses the X11 clipboard selection via
+.BR xclip (1).
+A running X server (or compatible Wayland XWayland bridge) is required.
+.PP
+Terminal output is colour\-coded when both stdout and stderr are connected
+to a terminal.
+.SH FILES
+.TP
+.I /tmp/image\-YYYYMMDD\-HHMMSS.png
+Default output location.
+.SH DEPENDENCIES
+.TP
+.BR xclip (1)
+Required.
+Provides clipboard read/write access.
+.TP
+.BR pngquant (1)
+Optional.
+Required only when the
+.B \-c
+flag is used.
+.PP
+Install both on Debian/Ubuntu:
+.PP
+.RS
+.B sudo apt install xclip pngquant
+.RE
+.SH BUGS
+When
+.B \-p
+is used, the image data in the clipboard is replaced with the file path
+as plain text.
+This is by design but may be unexpected.
+.SH AUTHORS
+Biksu Okusi <biksu@okusi.id>
+.SH SEE ALSO
+.BR xclip (1),
+.BR pngquant (1),
+.BR xdotool (1)

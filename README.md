@@ -2,6 +2,10 @@
 
 A lightweight, robust utility for saving PNG images from clipboard to timestamped files.
 
+```bash
+git clone https://github.com/Open-Technology-Foundation/c2i.git && cd c2i && sudo make install
+```
+
 ## Version 1.2.0
 
 ### What's New in v1.2.0
@@ -37,27 +41,14 @@ sudo apt update && sudo apt install xclip pngquant
 
 ### Setup
 
-1. Clone this repository or download the script:
-   ```bash
-   git clone <repository-url>
-   cd c2i
-   ```
+```bash
+git clone <repository-url>
+cd c2i
+sudo make install
+```
 
-2. Make the script executable:
-   ```bash
-   chmod +x clipboard-to-imagefile
-   ```
-
-3. Create convenient symlinks (optional):
-   ```bash
-   # Add to a directory in your PATH
-   sudo ln -s $(pwd)/clipboard-to-imagefile /usr/local/bin/c2i
-   ```
-
-4. Enable bash completion (optional):
-   ```bash
-   source .bash_completion
-   ```
+This installs the script, symlink, manpage, and bash completion to `/usr/local`.
+To customise the prefix: `sudo make PREFIX=/opt/local install`
 
 ## Usage
 
@@ -128,7 +119,7 @@ The project includes a comprehensive test suite:
 
 ```bash
 # Run all tests
-make -C tests test
+make test
 
 # Create test fixture from clipboard image
 make -C tests test-fixtures
@@ -160,7 +151,9 @@ Test coverage includes:
 c2i/
 ├── clipboard-to-imagefile    # Main script
 ├── c2i                       # Symlink to main script
-├── .bash_completion          # Tab completion support
+├── Makefile                  # Install/uninstall/test targets
+├── c2i.1                     # Man page
+├── c2i.bash_completion       # Tab completion support
 ├── README.md                 # This file
 ├── LICENSE                   # GPL-3 License
 └── tests/                    # Test suite
@@ -183,10 +176,9 @@ This project follows strict Bash coding standards:
 ## Contributing
 
 Contributions are welcome! Please ensure:
-1. Code follows the style in `BASH-CODING-STANDARD.md`
-2. All tests pass: `make -C tests test`
-3. Shellcheck reports no issues: `shellcheck -x clipboard-to-imagefile`
-4. New features include corresponding tests
+1. All tests pass: `make test`
+2. Shellcheck reports no issues: `shellcheck -x clipboard-to-imagefile`
+3. New features include corresponding tests
 
 ## License
 
