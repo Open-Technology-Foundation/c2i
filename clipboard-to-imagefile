@@ -130,8 +130,7 @@ save_clipboard_image() {
   if [[ -s "$filepath" ]]; then
     # Copy path to clipboard if requested
     if ((COPY_PATH)); then
-      # Clear clipboard first then set text content
-      # This ensures the text replaces any image data
+      # Write file path as text to clipboard, replacing the image data
       echo -n "$filepath" | xclip -selection clipboard -i 2>/dev/null
       info 'File path copied to clipboard'
     fi

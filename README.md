@@ -2,14 +2,13 @@
 
 A lightweight, robust utility for saving PNG images from clipboard to timestamped files.
 
-## Version 1.1.0
+## Version 1.2.0
 
-### What's New in v1.1.0
-- **Improved Code Quality**: Refactored to follow enterprise Bash coding standards
-- **Fixed Clipboard Path Copy**: The `-p` flag now correctly replaces image data with file path text
-- **Comprehensive Test Suite**: Added 50+ automated tests with fixtures
-- **Better Error Handling**: Standardized error messages and exit codes
-- **Enhanced Messaging**: Color-coded output with proper stream separation (stdout/stderr)
+### What's New in v1.2.0
+- **Simplified Message System**: Replaced text-based status prefixes with icons (◉, ✓, ✗)
+- **Cleaner Variable Declarations**: Switched to `declare -r` for constants
+- **Improved Option Bundling**: Rewritten combined short option handling
+- **Better Error Formatting**: Error messages use `${var@Q}` for quoted output
 
 ## Features
 
@@ -100,8 +99,8 @@ c2i -c 30 ~/Pictures
 c2i -p ~/Documents
 # The file path replaces the image in clipboard
 
-# Quiet mode for scripting
-imgpath=$(c2i -q ~/Pictures)
+# Capture filepath in a variable (verbose mode outputs to stdout)
+imgpath=$(c2i ~/Pictures)
 echo "Saved to: $imgpath"
 
 # Combine options
@@ -152,6 +151,7 @@ Test coverage includes:
 |------|---------|
 | 0 | Success |
 | 1 | General error (no image, directory issues, etc.) |
+| 2 | Too many arguments |
 | 22 | Invalid command-line option |
 
 ## Project Structure
@@ -162,9 +162,7 @@ c2i/
 ├── c2i                       # Symlink to main script
 ├── .bash_completion          # Tab completion support
 ├── README.md                 # This file
-├── CLAUDE.md                 # AI assistant guidelines
-├── BASH-CODING-STANDARD.md      # Coding standards
-├── LICENSE                   # MIT License
+├── LICENSE                   # GPL-3 License
 └── tests/                    # Test suite
     ├── run-tests.sh          # Test runner
     ├── test-*.sh             # Individual test files
