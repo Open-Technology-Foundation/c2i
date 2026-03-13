@@ -42,7 +42,7 @@ sudo apt update && sudo apt install xclip pngquant
 ### Setup
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Open-Technology-Foundation/c2i.git
 cd c2i
 sudo make install
 ```
@@ -115,7 +115,8 @@ This timestamp format ensures:
 
 ## Testing
 
-The project includes a comprehensive test suite:
+The project includes a comprehensive test suite.
+Copy a screen region to the clipboard before running tests.
 
 ```bash
 # Run all tests
